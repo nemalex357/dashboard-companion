@@ -193,6 +193,7 @@ function viewNew() {
 }
 
 let writeKind = 'thought'; // thought | task | decision
+let writeDraft = '';
 
 function viewWrite() {
   const kinds = [['thought', 'Мысль'], ['task', 'Задача'], ['decision', 'Решение']];
@@ -201,7 +202,7 @@ function viewWrite() {
     <div class="hd"><h2>Записать</h2><span class="day">быстрый захват</span></div>
     <div class="chips">${kinds.map(([k, l]) => `<span class="chip ${writeKind === k ? 'on' : ''}" data-write-kind="${k}">${l}</span>`).join('')}</div>
     ${needCard ? `<select id="write-card" class="inp" style="margin-bottom:10px">${cardList().filter((c) => !c.local).map((c) => `<option value="${esc(c.slug)}">${esc(c.name)}</option>`).join('')}</select>` : ''}
-    <textarea id="write-text" class="ta" placeholder="${writeKind === 'thought' ? 'Что пришло в голову…' : writeKind === 'task' ? 'Что нужно сделать…' : 'Что решил…'}"></textarea>
+    <textarea id="write-text" class="ta" placeholder="${writeKind === 'thought' ? 'Что пришло в голову…' : writeKind === 'task' ? 'Что нужно сделать…' : 'Что решил…'}">${esc(writeDraft)}</textarea>
     <div class="mic" id="btn-mic">🎤</div>
     <p class="lab" style="text-align:center;margin:8px 0 14px;text-transform:none;letter-spacing:0" id="mic-hint">или продиктовать — расшифруется дома</p>
     <button class="btn" id="btn-save-write">Сохранить</button>`;
@@ -282,7 +283,7 @@ document.getElementById('screen').addEventListener('click', (e) => {
     return;
   }
   const wk = e.target.closest('[data-write-kind]');
-  if (wk) { writeKind = wk.dataset.writeKind; render(); return; }
+  if (wk) { writeDraft = document.getElementById('write-text')?.value ?? writeDraft; writeKind = wk.dataset.writeKind; render(); return; }
   if (e.target.id === 'btn-save-write') {
     const text = document.getElementById('write-text').value.trim();
     if (!text) return;
@@ -290,6 +291,7 @@ document.getElementById('screen').addEventListener('click', (e) => {
     if (writeKind === 'decision') enqueue({ op: 'add-decision', text });
     if (writeKind === 'task') enqueue({ op: 'add-task', card: document.getElementById('write-card').value, text });
     document.getElementById('write-text').value = '';
+    writeDraft = '';
     return;
   }
   const rd = e.target.closest('[data-full]');
