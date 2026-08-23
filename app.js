@@ -139,7 +139,61 @@ function viewToday() {
     ${rec.length ? `<div class="sec"><div class="st"><span class="lab">🔁 повторяющиеся</span><span class="cnt">${rec.length}</span></div>${rec.map((r) => `<div class="tk"><p>${esc(r.title)}<span class="src">${esc(r.statusLabel)}</span></p></div>`).join('')}</div>` : ''}`;
 }
 
+let sphereFilter = localStorage.getItem('mob-sphere') || 'all';
+
+function viewCards() {
+  if (!S.snap) return '<p class="lab">загружаю…</p>';
+  const cards = cardList().filter((c) => sphereFilter === 'all' || c.sphere === sphereFilter);
+  const tabs = [['all', 'Все'], ['personal', 'Личное'], ['garant', 'Garant'], ['ai', 'AI']];
+  return `
+    <div class="hd"><h2>Карточки</h2><span class="plus" data-goto="#new">+</span></div>
+    <div class="tabs">${tabs.map(([k, l]) => `<span class="tab ${sphereFilter === k ? 'on' : ''}" data-sphere="${k}">${l}</span>`).join('')}</div>
+    ${cards.map((c) => {
+      const [icon, , cls] = SPHERES[c.sphere] ?? ['·', '', 'ai'];
+      const n = openTasks(c).length;
+      return `<div class="pc" data-goto="#card/${esc(c.slug)}"><span class="sph ${cls}">${icon}</span><span class="nm"><b>${esc(c.name)}</b><span>${SPHERES[c.sphere]?.[1] ?? ''} · ${c.kind === 'task' ? 'задача' : 'проект'}${c.status !== 'active' ? ' · ' + esc(c.status) : ''}</span></span><span class="n">${n || ''}</span></div>`;
+    }).join('')}`;
+}
+
+function viewCard() {
+  const slug = S.view.split('/')[1];
+  const card = cardList().find((c) => c.slug === slug);
+  if (!card) return '<p class="lab">карточка не найдена</p>';
+  const tasks = openTasks(card);
+  const hasReq = S.pending.some((a) => a.op === 'ask-agent' && a.target === slug);
+  return `
+    <div class="hd"><h2>${esc(card.name)}</h2><span class="day">${SPHERES[card.sphere]?.[0] ?? ''} ${SPHERES[card.sphere]?.[1] ?? ''}</span></div>
+    <div class="sec">
+      <div class="st"><span class="lab">задачи</span><span class="cnt">${tasks.length} откр.</span></div>
+      ${tasks.map((t) => `<div class="tk"><span class="box" data-toggle="${esc(card.slug)}|${esc(t.id)}"></span><p>${esc(t.title)}${t.local ? '<span class="src">ещё не синхронизировано</span>' : ''}</p>${t.important ? '<span class="imp"></span>' : ''}</div>`).join('') || '<p class="lab" style="padding:8px 0">открытых нет</p>'}
+    </div>
+    ${card.local ? '' : `
+      <div class="tk" style="border:none;padding:0 0 12px"><textarea id="new-task" class="inp" rows="1" placeholder="+ добавить задачу…"></textarea><button class="pi-run" id="btn-add-task" style="margin-left:8px">ОК</button></div>
+      ${hasReq ? '<div class="q"><b>⏳ Агент в очереди</b>выполнится, когда откроешь систему на компьютере</div>' : '<button class="btn gh" id="btn-ask">✦ Спросить агента (дома)</button>'}`}`;
+}
+
+function viewNew() {
+  return `
+    <div class="hd"><h2>Новая карточка</h2><span class="day" data-goto="#cards">✕</span></div>
+    <p class="step">1 · сфера</p>
+    <div class="pick">
+      <div class="pk" data-pick-sphere="personal"><i>🏠</i><b>Личное</b><small>задача</small></div>
+      <div class="pk" data-pick-sphere="garant"><i>💼</i><b>Garant IN</b><small>задача</small></div>
+      <div class="pk" data-pick-sphere="ai"><i>✦</i><b>AI</b><small>проект или задача</small></div>
+    </div>
+    <p class="step" id="kind-step" hidden>2 · тип</p>
+    <div class="chips" id="kind-pick" hidden>
+      <span class="chip on" data-pick-kind="project">Проект</span>
+      <span class="chip" data-pick-kind="task">Задача</span>
+    </div>
+    <p class="step">название</p>
+    <textarea id="new-name" class="ta" rows="2" placeholder="Что за дело?"></textarea>
+    <button class="btn" id="btn-create" style="margin-top:14px">Создать карточку</button>
+    <p class="lab" style="text-align:center;margin-top:12px;text-transform:none;letter-spacing:0">появится дома сразу; цель и анализ Claude подтянет на компьютере</p>`;
+}
+
 const VIEWS = { today: viewToday };
+Object.assign(VIEWS, { cards: viewCards, card: viewCard, new: viewNew });
 
 function render() {
   const el = document.getElementById('screen');
@@ -158,6 +212,40 @@ document.getElementById('screen').addEventListener('click', (e) => {
   }
   const go = e.target.closest('[data-goto]');
   if (go) location.hash = go.dataset.goto;
+
+  const tab = e.target.closest('[data-sphere]');
+  if (tab) { sphereFilter = tab.dataset.sphere; localStorage.setItem('mob-sphere', sphereFilter); render(); return; }
+
+  if (e.target.id === 'btn-add-task') {
+    const ta = document.getElementById('new-task');
+    const text = ta.value.trim();
+    if (text) enqueue({ op: 'add-task', card: S.view.split('/')[1], text });
+    return;
+  }
+  if (e.target.id === 'btn-ask') {
+    const target = S.view.split('/')[1];
+    enqueue({ op: 'ask-agent', agent: 'marketolog', target });
+    return;
+  }
+  const ps = e.target.closest('[data-pick-sphere]');
+  if (ps) {
+    document.querySelectorAll('[data-pick-sphere]').forEach((x) => x.classList.toggle('on', x === ps));
+    const isAi = ps.dataset.pickSphere === 'ai';
+    document.getElementById('kind-step').hidden = !isAi;
+    document.getElementById('kind-pick').hidden = !isAi;
+    return;
+  }
+  const pk = e.target.closest('[data-pick-kind]');
+  if (pk) { document.querySelectorAll('[data-pick-kind]').forEach((x) => x.classList.toggle('on', x === pk)); return; }
+  if (e.target.id === 'btn-create') {
+    const sphere = document.querySelector('[data-pick-sphere].on')?.dataset.pickSphere;
+    const name = document.getElementById('new-name').value.trim();
+    if (!sphere || !name) return;
+    const kind = sphere === 'ai' ? (document.querySelector('[data-pick-kind].on')?.dataset.pickKind ?? 'project') : 'task';
+    enqueue({ op: 'create-card', name, sphere, kind });
+    location.hash = '#cards';
+    return;
+  }
 });
 window.addEventListener('hashchange', () => { S.view = location.hash.slice(1) || 'today'; render(); });
 window.addEventListener('online', flush);
