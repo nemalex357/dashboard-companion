@@ -107,6 +107,11 @@ async function flush() {
       const list = meta ? JSON.parse(b64decode(meta.content)) : [];
       const known = new Set(list.map((x) => x.id));
       const add = S.pending.filter((x) => !known.has(x.id));
+      if (add.length < S.pending.length) {
+        S.pending = S.pending.filter((x) => !known.has(x.id));
+        save('mob-pending', S.pending);
+      }
+      if (!add.length) break;
       try {
         await ghPut('inbox.json', JSON.stringify([...list, ...add], null, 1) + '\n', meta?.sha, 'телефон: ' + add.map((a) => a.op).join(', '));
         S.pending = S.pending.filter((x) => !add.some((a) => a.id === x.id));
@@ -331,6 +336,10 @@ document.getElementById('screen').addEventListener('click', (e) => {
   if (e.target.id === 'btn-save-write') {
     const text = document.getElementById('write-text').value.trim();
     if (!text) return;
+    if (writeKind === 'task') {
+      const card = document.getElementById('write-card')?.value;
+      if (!card) return;
+    }
     if (writeKind === 'thought') enqueue({ op: 'add-thought', text });
     if (writeKind === 'decision') enqueue({ op: 'add-decision', text });
     if (writeKind === 'task') enqueue({ op: 'add-task', card: document.getElementById('write-card').value, text });
