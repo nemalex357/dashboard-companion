@@ -1,0 +1,8 @@
+{
+  "name": "Моя ОС",
+  "short_name": "Моя ОС",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#EDE8DD",
+  "theme_color": "#EDE8DD"
+}

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Моя ОС</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  --bg:#EDE8DD; --bg-2:#E6E0D3; --paper:#F8F5EE; --paper-2:#FBF9F3;
+  --ink:#2A2520; --ink-2:#5c554d; --stone:#8E867B; --line:rgba(42,37,32,.10);
+  --orange:#D43D17; --yellow:#C9A21a; --green:#5c7a4a; --red:#c0381a;
+}
+*{box-sizing:border-box}
+body{
+  margin:0 auto;max-width:520px;
+  padding:12px 14px calc(70px + env(safe-area-inset-bottom));
+  background:var(--bg);color:var(--ink);
+  font-family:-apple-system,system-ui,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+
+.lab{font-weight:600;font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--stone)}
+
+/* шапка экрана */
+.hd{display:flex;align-items:baseline;justify-content:space-between;padding:6px 2px 12px}
+.hd h2{margin:0;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.hd .day{font-size:11.5px;color:var(--stone)}
+
+/* фокус-лента (тёмная, как в системе) */
+.fb{background:linear-gradient(135deg,#221a11,#2b2013);border-radius:18px;padding:13px 14px 14px;margin-bottom:14px}
+.fb .k{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:#C9A21a;font-weight:600;margin-bottom:10px}
+.fb .it{background:rgba(248,245,238,.94);border-radius:11px;padding:9px 11px;margin-bottom:7px}
+.fb .it:last-child{margin-bottom:0}
+.fb .it p{margin:0;font-size:12.5px;font-weight:500;line-height:1.35}
+.fb .it small{display:block;margin-top:3px;font-size:10.5px;color:var(--stone)}
+
+/* карточка-секция */
+.sec{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:13px 14px;margin-bottom:12px}
+.sec .st{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sec .st .lab{font-size:10px}
+.cnt{font-size:11px;color:var(--stone);font-weight:600}
+
+/* строка задачи */
+.tk{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line)}
+.tk:last-child{border-bottom:none}
+.box{width:17px;height:17px;border-radius:6px;border:1.5px solid rgba(42,37,32,.28);flex:none;margin-top:1px}
+.box.on{background:var(--green);border-color:var(--green);position:relative}
+.box.on::after{content:"";position:absolute;left:5px;top:1.5px;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(43deg)}
+.tk p{margin:0;font-size:12.5px;line-height:1.42;flex:1}
+.tk.done p{color:var(--stone);text-decoration:line-through}
+.tk .src{display:block;font-size:10.5px;color:var(--stone);margin-top:2px;text-decoration:none}
+.imp{width:8px;height:8px;border-radius:50%;background:var(--red);flex:none;margin-top:6px}
+
+/* карточка проекта */
+.pc{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:11px 13px;margin-bottom:9px;display:flex;align-items:center;gap:11px}
+.sph{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+.sph.ai{background:rgba(212,61,23,.12)} .sph.g{background:rgba(201,162,26,.16)} .sph.p{background:rgba(92,122,74,.14)}
+.pc .nm{flex:1;min-width:0}
+.pc .nm b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .nm span{font-size:10.5px;color:var(--stone)}
+.pc .n{font-size:12px;color:var(--stone);font-weight:600;flex:none}
+
+/* вкладки сфер */
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{flex:1;text-align:center;padding:7px 0;border-radius:11px;font-size:11.5px;font-weight:600;color:var(--ink-2);background:var(--bg-2)}
+.tab.on{background:var(--ink);color:var(--paper)}
+
+/* поля / кнопки */
+.inp{width:100%;background:var(--paper-2);border:1px solid var(--line);border-radius:13px;padding:11px 13px;font-size:12.5px;color:var(--stone)}
+.ta{width:100%;min-height:112px;background:var(--paper-2);border:1px solid var(--line);border-radius:15px;padding:13px;font-size:13px;line-height:1.5;color:var(--ink)}
+.btn{display:block;width:100%;text-align:center;padding:13px;border-radius:14px;background:var(--orange);color:#fff;font-size:13px;font-weight:600;border:none;box-shadow:0 8px 20px rgba(212,61,23,.24)}
+.btn.gh{background:transparent;color:var(--ink-2);border:1px solid var(--line);box-shadow:none}
+.chips{display:flex;gap:7px;margin-bottom:12px}
+.chip{flex:1;text-align:center;padding:8px 0;border-radius:11px;font-size:11.5px;font-weight:600;background:var(--bg-2);color:var(--ink-2)}
+.chip.on{background:var(--ink);color:var(--paper)}
+
+/* очередь / статус */
+.q{background:rgba(201,162,26,.13);border:1px solid rgba(201,162,26,.32);border-radius:14px;padding:11px 13px;font-size:12px;color:#7a6414;line-height:1.5;margin-bottom:12px}
+.q b{display:block;margin-bottom:3px;font-size:12.5px;color:#5f4e0f}
+
+/* читалка */
+.rd{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:11px 13px;margin-bottom:9px}
+.rd .t{font-size:13px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.rd .t em{font-style:normal;font-size:10.5px;color:var(--stone);font-weight:500;flex:none}
+.rd p{margin:5px 0 0;font-size:11.5px;color:var(--ink-2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.art{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:15px}
+.art h3{margin:0 0 4px;font-size:15px;font-weight:700}
+.art .meta{font-size:10.5px;color:var(--stone);margin-bottom:11px}
+.art p{margin:0 0 11px;font-size:12.5px;line-height:1.62;color:var(--ink-2)}
+.art .fc{border-top:1px dashed rgba(42,37,32,.24);padding-top:11px;margin-top:2px}
+.art .fc .lab{display:block;margin-bottom:6px;color:var(--orange);font-size:9.5px}
+
+/* нижняя навигация — страница сама телефон, поэтому nav прибита к низу viewport */
+.nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:520px;
+  height:58px;padding:0 6px calc(env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);background:var(--paper);
+  display:flex;align-items:center;box-sizing:border-box;
+}
+.nav a{flex:1;text-align:center;font-size:9.5px;color:var(--stone);text-decoration:none;font-weight:600;letter-spacing:.2px}
+.nav a i{display:block;font-style:normal;font-size:16px;margin-bottom:2px;opacity:.6}
+.nav a.on{color:var(--orange)} .nav a.on i{opacity:1}
+
+/* «+» в шапке и пикер создания */
+.plus{width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;line-height:1}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+.pk{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:13px 11px;text-align:center}
+.pk.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.pk i{display:block;font-style:normal;font-size:19px;margin-bottom:6px}
+.pk b{display:block;font-size:12.5px;font-weight:600}
+.pk small{display:block;font-size:10px;color:var(--stone);margin-top:2px}
+.pk.on small{color:rgba(248,245,238,.6)}
+.step{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--stone);font-weight:600;margin:0 0 9px}
+</style>
+</head>
+<body>
+  <div id="login" hidden>
+    <div class="hd"><h2>Вход</h2></div>
+    <p class="lab" style="margin-bottom:8px">github-логин</p>
+    <input id="in-owner" class="inp" value="nemalex357">
+    <p class="lab" style="margin:14px 0 8px">токен доступа (fine-grained, только dashboard-data)</p>
+    <input id="in-token" class="inp" type="password" placeholder="github_pat_…">
+    <button id="btn-login" class="btn" style="margin-top:16px">Войти</button>
+    <p id="login-err" class="lab" style="color:var(--red);margin-top:10px"></p>
+  </div>
+  <div id="app" hidden>
+    <div id="offline" class="q" hidden><b>офлайн</b>показано последнее загруженное; действия уйдут при появлении сети</div>
+    <div id="screen"></div>
+    <nav class="nav">
+      <a href="#today"><i>◉</i>Сегодня</a>
+      <a href="#cards"><i>▤</i>Карточки</a>
+      <a href="#write"><i>✎</i>Записать</a>
+      <a href="#reports"><i>✦</i>Разборы</a>
+    </nav>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
