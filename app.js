@@ -211,7 +211,7 @@ document.getElementById('screen').addEventListener('click', (e) => {
     return;
   }
   const go = e.target.closest('[data-goto]');
-  if (go) location.hash = go.dataset.goto;
+  if (go) { location.hash = go.dataset.goto; return; }
 
   const tab = e.target.closest('[data-sphere]');
   if (tab) { sphereFilter = tab.dataset.sphere; localStorage.setItem('mob-sphere', sphereFilter); render(); return; }
