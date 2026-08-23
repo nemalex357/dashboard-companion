@@ -43,6 +43,52 @@ async function ghPut(path, contentStr, sha, message) {
   });
   return r.ok ? r.json() : Promise.reject({ status: r.status });
 }
+async function ghPutBinary(path, blob, message) {
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  let bin = '';
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  const r = await fetch(`${API}/repos/${S.owner}/${S.repo}/contents/${path}`, {
+    method: 'PUT', headers: { ...hdrs(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, content: btoa(bin) }),
+  });
+  if (!r.ok) throw { status: r.status };
+}
+
+// ── голосовая запись ─────────────────────────────────────────────────────────
+let rec = null, chunks = [];
+async function toggleMic() {
+  const hint = document.getElementById('mic-hint');
+  if (rec) {
+    rec.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = ['audio/mp4', 'audio/webm'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
+    rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    chunks = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const ext = (rec.mimeType || '').includes('mp4') ? 'm4a' : 'webm';
+      rec = null;
+      const blob = new Blob(chunks);
+      const name = `voice/${new Date().toISOString().replace(/[:.]/g, '-')}.${ext}`;
+      hint.textContent = 'отправляю запись…';
+      try {
+        await ghPutBinary(name, blob, 'телефон: голосовая запись');
+        enqueue({ op: 'voice', file: name });
+        hint.textContent = 'ушло — расшифруется дома, появится в «Мыслях»';
+      } catch {
+        hint.textContent = 'не удалось отправить — попробуй ещё раз при сети';
+      }
+    };
+    rec.start();
+    hint.textContent = '● запись… нажми ещё раз, чтобы остановить';
+  } catch {
+    hint.textContent = 'нет доступа к микрофону';
+  }
+}
 
 // ── журнал действий ──────────────────────────────────────────────────────────
 function enqueue(action) {
@@ -169,7 +215,8 @@ function viewCard() {
     </div>
     ${card.local ? '' : `
       <div class="tk" style="border:none;padding:0 0 12px"><textarea id="new-task" class="inp" rows="1" placeholder="+ добавить задачу…"></textarea><button class="pi-run" id="btn-add-task" style="margin-left:8px">ОК</button></div>
-      ${hasReq ? '<div class="q"><b>⏳ Агент в очереди</b>выполнится, когда откроешь систему на компьютере</div>' : '<button class="btn gh" id="btn-ask">✦ Спросить агента (дома)</button>'}`}`;
+      ${hasReq ? '<div class="q"><b>⏳ Агент в очереди</b>выполнится, когда откроешь систему на компьютере</div>' : `<div class="chips">${[['marketolog', '📣 Маркетолог'], ['strateg', '♟ Стратег']].map(([slug, l]) => `<span class="chip" data-ask="${slug}">${l}</span>`).join('')}</div>
+       <p class="lab" style="text-transform:none;letter-spacing:0">спросить агента — выполнится дома</p>`}`}`;
 }
 
 function viewNew() {
@@ -258,11 +305,8 @@ document.getElementById('screen').addEventListener('click', (e) => {
     if (text) enqueue({ op: 'add-task', card: S.view.split('/')[1], text });
     return;
   }
-  if (e.target.id === 'btn-ask') {
-    const target = S.view.split('/')[1];
-    enqueue({ op: 'ask-agent', agent: 'marketolog', target });
-    return;
-  }
+  const ask = e.target.closest('[data-ask]');
+  if (ask) { enqueue({ op: 'ask-agent', agent: ask.dataset.ask, target: S.view.split('/')[1] }); return; }
   const ps = e.target.closest('[data-pick-sphere]');
   if (ps) {
     document.querySelectorAll('[data-pick-sphere]').forEach((x) => x.classList.toggle('on', x === ps));
@@ -296,6 +340,7 @@ document.getElementById('screen').addEventListener('click', (e) => {
   }
   const rd = e.target.closest('[data-full]');
   if (rd) { const f = rd.querySelector('.art'); if (f) f.hidden = !f.hidden; return; }
+  if (e.target.id === 'btn-mic') { toggleMic(); return; }
 });
 window.addEventListener('hashchange', () => { S.view = location.hash.slice(1) || 'today'; render(); });
 window.addEventListener('online', flush);
