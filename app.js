@@ -192,8 +192,43 @@ function viewNew() {
     <p class="lab" style="text-align:center;margin-top:12px;text-transform:none;letter-spacing:0">появится дома сразу; цель и анализ Claude подтянет на компьютере</p>`;
 }
 
+let writeKind = 'thought'; // thought | task | decision
+
+function viewWrite() {
+  const kinds = [['thought', 'Мысль'], ['task', 'Задача'], ['decision', 'Решение']];
+  const needCard = writeKind === 'task';
+  return `
+    <div class="hd"><h2>Записать</h2><span class="day">быстрый захват</span></div>
+    <div class="chips">${kinds.map(([k, l]) => `<span class="chip ${writeKind === k ? 'on' : ''}" data-write-kind="${k}">${l}</span>`).join('')}</div>
+    ${needCard ? `<select id="write-card" class="inp" style="margin-bottom:10px">${cardList().filter((c) => !c.local).map((c) => `<option value="${esc(c.slug)}">${esc(c.name)}</option>`).join('')}</select>` : ''}
+    <textarea id="write-text" class="ta" placeholder="${writeKind === 'thought' ? 'Что пришло в голову…' : writeKind === 'task' ? 'Что нужно сделать…' : 'Что решил…'}"></textarea>
+    <div class="mic" id="btn-mic">🎤</div>
+    <p class="lab" style="text-align:center;margin:8px 0 14px;text-transform:none;letter-spacing:0" id="mic-hint">или продиктовать — расшифруется дома</p>
+    <button class="btn" id="btn-save-write">Сохранить</button>`;
+}
+
+function viewReports() {
+  const r = S.reports;
+  if (!r) { loadReports(); return '<div class="hd"><h2>Разборы</h2></div><p class="lab">загружаю…</p>'; }
+  const md = (s) => esc(s).replace(/\n/g, '<br>');
+  return `
+    <div class="hd"><h2>Разборы</h2><span class="day">читалка</span></div>
+    ${r.day ? `<div class="art"><h3>✦ Обзор дня</h3><div class="meta">${esc(r.day.dayKey)}</div><p>${md(r.day.synthesis)}</p>${r.day.focus ? `<div class="fc"><span class="lab">на что обратить внимание</span><p style="margin:0">${md(r.day.focus)}</p></div>` : ''}</div><div style="height:12px"></div>` : ''}
+    ${r.week ? `<div class="art"><h3>📅 Обзор недели</h3><div class="meta">неделя с ${esc(r.week.weekKey)}</div><p>${md(r.week.synthesis)}</p>${r.week.focus ? `<div class="fc"><span class="lab">фокус недели</span><p style="margin:0">${md(r.week.focus)}</p></div>` : ''}</div><div style="height:12px"></div>` : ''}
+    ${r.board ? `<div class="art"><h3>🎯 Совет директоров</h3><div class="meta">${esc(r.board.convenedAt ?? '')}</div><p><b>Вердикт:</b> ${md(r.board.verdict)}</p><p><b>Главный шаг:</b> ${md(r.board.nextStep)}</p>${r.board.members.map((m) => `<p>${esc(m.icon)} <b>${esc(m.role)}:</b> ${md(m.advice)}</p>`).join('')}</div><div style="height:12px"></div>` : ''}
+    ${r.agents.map((a) => `<div class="rd" data-full="${esc(a.agent)}"><div class="t"><span>🤖 ${esc(a.agent)}${a.scope !== 'all' ? ' · ' + esc(a.scope) : ''}</span><em>${esc(a.ranAt)}</em></div><p>${md(a.summary)}</p><div class="art" hidden><p>${md(a.full)}</p></div></div>`).join('')}`;
+}
+
+async function loadReports() {
+  try {
+    const r = await ghGetJson('mobile-reports.json');
+    if (r) { S.reports = r; save('mob-reports', r); render(); }
+  } catch { /* оффлайн — показываем кэш */ }
+}
+
 const VIEWS = { today: viewToday };
 Object.assign(VIEWS, { cards: viewCards, card: viewCard, new: viewNew });
+Object.assign(VIEWS, { write: viewWrite, reports: viewReports });
 
 function render() {
   const el = document.getElementById('screen');
@@ -246,6 +281,19 @@ document.getElementById('screen').addEventListener('click', (e) => {
     location.hash = '#cards';
     return;
   }
+  const wk = e.target.closest('[data-write-kind]');
+  if (wk) { writeKind = wk.dataset.writeKind; render(); return; }
+  if (e.target.id === 'btn-save-write') {
+    const text = document.getElementById('write-text').value.trim();
+    if (!text) return;
+    if (writeKind === 'thought') enqueue({ op: 'add-thought', text });
+    if (writeKind === 'decision') enqueue({ op: 'add-decision', text });
+    if (writeKind === 'task') enqueue({ op: 'add-task', card: document.getElementById('write-card').value, text });
+    document.getElementById('write-text').value = '';
+    return;
+  }
+  const rd = e.target.closest('[data-full]');
+  if (rd) { const f = rd.querySelector('.art'); if (f) f.hidden = !f.hidden; return; }
 });
 window.addEventListener('hashchange', () => { S.view = location.hash.slice(1) || 'today'; render(); });
 window.addEventListener('online', flush);
