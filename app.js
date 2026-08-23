@@ -63,7 +63,7 @@ async function flush() {
       const add = S.pending.filter((x) => !known.has(x.id));
       try {
         await ghPut('inbox.json', JSON.stringify([...list, ...add], null, 1) + '\n', meta?.sha, 'телефон: ' + add.map((a) => a.op).join(', '));
-        S.pending = [];
+        S.pending = S.pending.filter((x) => !add.some((a) => a.id === x.id));
         save('mob-pending', S.pending);
       } catch (e) {
         if (e.status === 409 || e.status === 422) continue; // sha устарел — перечитать и повторить
